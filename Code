@@ -1,19 +1,19 @@
 #load librarys
 library(readxl)
 library(tidyverse)
-
+## This load data section is broken do not use
 # load data set
-df <- read_excel("Morton Collecton Data - Meyer and Lewis 2021.xlsx",
-                 sheet = "FinalTableJason1-notext")
+# df <- read_excel("Morton_Collecton_Data_Meyer_and_Lewis_2021.xlsx",
+#                 sheet = "FinalTableJason1-notext")
 
 # clean column names get rid of extra stuff 
-names(df) <- names(df) %>%
+names(MDF) <- names(MDF) %>%
   tolower() %>%
   gsub("[^a-z0-9]+", "_", .) %>%
   gsub("^_|_$", "", .)
 
 #change variable names so they are consistent and will work with data 
-df <- df %>%
+MDF <- MDF %>%
   mutate(
     sex = toupper(trimws(as.character(sex))),
     cranial_capacity = as.numeric(cranial_capacity),
@@ -39,7 +39,7 @@ decision_text <- function(p) {
 
 # Plot of the distribution of cranial breadth throughout the whole dataset
 
-p1 <- ggplot(MDF, aes(x = `CRANIAL BREADTH`)) +
+p1 <- ggplot(MDF, aes(x = `cranial_breadth`)) +
   geom_histogram(bins = 30) +
   labs(title = "Distribution of Cranial Breadth",
        x = "Cranial Breadth (cb)", y = "Count") +
@@ -47,7 +47,7 @@ p1 <- ggplot(MDF, aes(x = `CRANIAL BREADTH`)) +
 p1
 
 # plot of cranial length vs cranial breadth 
-p2 <- ggplot(MDF, aes(x = `CRANIAL LENGTH`, y = `CRANIAL BREADTH`)) +
+p2 <- ggplot(MDF, aes(x = `cranial_length`, y = `cranial_breadth`)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = TRUE) +
   labs(title = "Cranial Length vs Cranial Breadth",
@@ -72,13 +72,13 @@ descriptive_stats <- MDF %>%
     Max = max(Value, na.rm = TRUE)
   ) %>%
   arrange(Variable)
- 
+
 descriptive_stats
 correlation_data <- MDF %>%
-  select(`CRANIAL CAPACITY`,
-         `CRANIAL LENGTH`,
-         `CRANIAL BREADTH`,
-         `CRANIAL INDEX (B/L*100)`)
+  select(`cranial_capacity`,
+         `cranial_length`,
+         `cranial_breadth`,
+         `cranial_index_b_l_100`)
 
 
 
@@ -142,7 +142,7 @@ cat("Decision:", decision_text(h1_test$p.value), "\n")
 
 # Plot of results, this was not working for some reason I was only getting a line. However, I realized I had inconsistinacies in my code. Sometimes I would call back male and female and other times I would call back M and F. I think this lead to R getting confused.
 
-p1 <- ggplot(df_h1, aes(x = sex, y = )) +
+p1 <- ggplot(df_h1, aes(x = sex, y = cranial_breadth )) +
   geom_boxplot() +
   labs(title = "H1: Cranial Breadth by Sex",
        x = "Sex",
@@ -286,3 +286,4 @@ p4 <- ggplot(df_h4, aes(x = cranial_length, y = cranial_breadth)) +
   labs(title = "H4: Cranial Length vs Cranial Breadth",
        x = "Cranial Length",
        y = "Cranial Breadth")
+
