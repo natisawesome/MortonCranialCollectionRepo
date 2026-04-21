@@ -1,10 +1,14 @@
 #load librarys
 library(readxl)
 library(tidyverse)
-## This load data section is broken do not use
+
+
+## !!This load data section is broken do not use!!
 # load data set
 # df <- read_excel("Morton_Collecton_Data_Meyer_and_Lewis_2021.xlsx",
 #                 sheet = "FinalTableJason1-notext")
+
+### ALSO YOU HAVE TO NAME THE DataFrame MDF AT THE BEGINNING AS IT WILL TAKE THAT APART AND CREATE df df1 and stuff
 
 # clean column names get rid of extra stuff 
 names(MDF) <- names(MDF) %>%
