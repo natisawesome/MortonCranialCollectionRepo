@@ -1,0 +1,290 @@
+# load librarys
+library(readxl)
+library(tidyverse)
+
+
+# load data set
+# df <- read_excel("Morton_Collecton_Data_Meyer_and_Lewis_2021.xlsx",
+ #                sheet = "FinalTableJason1-notext")
+
+# clean column names get rid of extra stuff 
+names(MDF) <- names(MDF) %>%
+  tolower() %>%
+  gsub("[^a-z0-9]+", "_", .) %>%
+  gsub("^_|_$", "", .)
+
+#change variable names so they are consistent and will work with data 
+MDF <- MDF %>%
+  mutate(
+    sex = toupper(trimws(as.character(sex))),
+    cranial_capacity = as.numeric(cranial_capacity),
+    cranial_breadth = as.numeric(cranial_breadth),
+    cranial_length = as.numeric(cranial_length),
+    orbht = as.numeric(orbht),
+    orbbr = as.numeric(orbbr)
+  )
+
+#Functions thanks to chat gpt because I dont know how to do them and this seems like it would be helpful/keep popping up in the youtube videos I have been watching on this. Here is a website which was very helpful to explain them
+# [Statology Function Explaination](https://www.statology.org/how-to-create-use-functions-r/) [Indepth Blog on Functions](https://www.r-bloggers.com/2024/01/r-function-writing-101a-journey-through-syntax-best-practices-and-more/)
+
+
+decision_text <- function(p) {
+  if (is.na(p)) {
+    "Decision could not be made."
+  } else if (p < 0.05) {
+    "Reject the null hypothesis."
+  } else {
+    "Fail to reject the null hypothesis."
+  }
+}
+
+# Plot of the distribution of cranial breadth throughout the whole dataset
+
+p1 <- ggplot(MDF, aes(x = `cranial_breadth`)) +
+  geom_histogram(bins = 30) +
+  labs(title = "Distribution of Cranial Breadth",
+       x = "Cranial Breadth (cb)", y = "Count") +
+  theme_minimal()
+p1
+
+# plot of cranial length vs cranial breadth 
+p2 <- ggplot(MDF, aes(x = `cranial_length`, y = `cranial_breadth`)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(title = "Cranial Length vs Cranial Breadth",
+       x = "Cranial Length (mm)", y = "Cranial Breadth (mm)") +
+  theme_minimal()
+p2
+
+# Summary statistics for the whole data set. 
+
+descriptive_stats <- MDF %>%
+  select(where(is.numeric)) %>%
+  pivot_longer(everything(),
+               names_to = "Variable",
+               values_to = "Value") %>%
+  group_by(Variable) %>%
+  summarise(
+    Mean = mean(Value, na.rm = TRUE),
+    Median = median(Value, na.rm = TRUE),
+    SD = sd(Value, na.rm = TRUE),
+    IQR = IQR(Value, na.rm = TRUE),
+    Min = min(Value, na.rm = TRUE),
+    Max = max(Value, na.rm = TRUE)
+  ) %>%
+  arrange(Variable)
+
+descriptive_stats
+correlation_data <- MDF %>%
+  select(`cranial_capacity`,
+         `cranial_length`,
+         `cranial_breadth`,
+         `cranial_index_b_l_100`)
+
+
+
+
+
+
+
+# H1 analysis "Males have more robust cranial measurments than females."
+
+df_h1 <- df %>%
+  filter(sex %in% c("M", "F")) %>%
+  select(sex, cranial_breadth) %>%
+  drop_na()
+
+print(table(df_h1$sex))
+
+#Summary stats of measurments grouped by male or female. It is noted that these sex estimations could be biased resulting in inaccurate data.
+
+print(
+  df_h1 %>%
+    group_by(sex) %>%
+    summarise(
+      n = n(),
+      mean = mean(cranial_breadth),
+      sd = sd(cranial_breadth),
+      median = median(cranial_breadth),
+      iqr = IQR(cranial_breadth),
+      .groups = "drop"
+    )
+)
+
+# Female and Male cranial breadth values made into their own category, and changed to M and F in the data sheet
+
+male_vals <- df_h1 %>% filter(sex == "M") %>% pull(cranial_breadth)
+female_vals <- df_h1 %>% filter(sex == "F") %>% pull(cranial_breadth)
+
+# Shapiro test for male and female cranial breadth values
+
+shapiro_male <- shapiro.test(male_vals)
+shapiro_female <- shapiro.test(female_vals)
+
+
+print(shapiro_male)
+print(shapiro_female)
+
+# Function which will chose the next test depending on the results from the original shapiro test.
+
+normal_ok_h1 <- shapiro_male$p.value > 0.05 & shapiro_female$p.value > 0.05
+
+if (normal_ok_h1) {
+  h1_test <- t.test(cranial_breadth ~ sex, data = df_h1)
+  cat("Selected test: t-test\n")
+} else {
+  h1_test <- wilcox.test(cranial_breadth ~ sex, data = df_h1)
+  cat("Selected test: Wilcoxon rank-sum test\n")
+}
+
+
+print(h1_test)
+cat("Decision:", decision_text(h1_test$p.value), "\n")
+
+# Plot of results, this was not working for some reason I was only getting a line. However, I realized I had inconsistinacies in my code. Sometimes I would call back male and female and other times I would call back M and F. I think this lead to R getting confused.
+
+p1 <- ggplot(df_h1, aes(x = sex, y = cranial_breadth)) +
+  geom_boxplot() +
+  labs(title = "H1: Cranial Breadth by Sex",
+       x = "Sex",
+       y = "Cranial Breadth")
+
+print(p1)
+
+
+# H2
+
+# Selectets orbital height and orbital breadth to analyse, creates its own df with only these two variables in it.
+
+df_h2 <- df %>%
+  select(orbht, orbbr) %>%
+  drop_na()
+
+# Summary of the data in the new df 
+
+print(summary(df_h2))
+
+# Shapiro test of orbht and orbbr
+
+shapiro_orbht <- shapiro.test(df_h2$orbht)
+shapiro_orbbr <- shapiro.test(df_h2$orbbr)
+
+print(shapiro_orbht)
+print(shapiro_orbbr)
+
+# Function to chose next test depending on the shapiro results
+
+normal_ok_h2 <- shapiro_orbht$p.value > 0.05 & shapiro_orbbr$p.value > 0.05
+
+if (normal_ok_h2) {
+  h2_test <- cor.test(df_h2$orbht, df_h2$orbbr, method = "pearson")
+  cat("Selected test: Pearson correlation\n")
+} else {
+  h2_test <- cor.test(df_h2$orbht, df_h2$orbbr, method = "spearman")
+  cat("Selected test: Spearman correlation\n")
+}
+
+print(h2_test)
+cat("Decision:", decision_text(h2_test$p.value), "\n")
+
+# Plot of orbital height vs orbital breadth 
+
+p2 <- ggplot(df_h2, aes(x = orbht, y = orbbr)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "H2: Orbital Height vs Orbital Breadth",
+       x = "Orbital Height",
+       y = "Orbital Breadth")
+
+
+
+
+# H3
+
+
+# Creates a new dataset specifically for the data in H3
+
+
+df_h3 <- df %>%
+  select(cranial_capacity, cranial_breadth) %>%
+  drop_na()
+
+print(summary(df_h3))
+
+# Shapiro test for H3
+
+shapiro_cc <- shapiro.test(df_h3$cranial_capacity)
+shapiro_cb <- shapiro.test(df_h3$cranial_breadth)
+
+print(shapiro_cc)
+print(shapiro_cb)
+
+# Function for H3
+
+normal_ok_h3 <- shapiro_cc$p.value > 0.05 & shapiro_cb$p.value > 0.05
+
+if (normal_ok_h3) {
+  h3_test <- cor.test(df_h3$cranial_capacity, df_h3$cranial_breadth, method = "pearson")
+  cat("Selected test: Pearson correlation\n")
+} else {
+  h3_test <- cor.test(df_h3$cranial_capacity, df_h3$cranial_breadth, method = "spearman")
+  cat("Selected test: Spearman correlation\n")
+}
+
+print(h3_test)
+cat("Decision:", decision_text(h3_test$p.value), "\n")
+
+# Plot for H3
+
+p3 <- ggplot(df_h3, aes(x = cranial_capacity, y = cranial_breadth)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "H3: Cranial Capacity vs Cranial Breadth",
+       x = "Cranial Capacity",
+       y = "Cranial Breadth")
+
+
+# H4
+
+# New dataset for H4
+
+df_h4 <- df %>%
+  select(cranial_length, cranial_breadth) %>%
+  drop_na()
+
+# Summary of the dataset
+
+print(summary(df_h4))
+
+#Shapiro test for H4 variables
+
+shapiro_cl <- shapiro.test(df_h4$cranial_length)
+shapiro_cb2 <- shapiro.test(df_h4$cranial_breadth)
+
+print(shapiro_cl)
+print(shapiro_cb2)
+
+#Function based on previous results
+
+normal_ok_h4 <- shapiro_cl$p.value > 0.05 & shapiro_cb2$p.value > 0.05
+
+if (normal_ok_h4) {
+  h4_test <- cor.test(df_h4$cranial_length, df_h4$cranial_breadth, method = "pearson")
+  cat("Selected test: Pearson correlation\n")
+} else {
+  h4_test <- cor.test(df_h4$cranial_length, df_h4$cranial_breadth, method = "spearman")
+  cat("Selected test: Spearman correlation\n")
+}
+
+print(h4_test)
+cat("Decision:", decision_text(h4_test$p.value), "\n")
+
+#Plot for H4
+
+p4 <- ggplot(df_h4, aes(x = cranial_length, y = cranial_breadth)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "H4: Cranial Length vs Cranial Breadth",
+       x = "Cranial Length",
+       y = "Cranial Breadth")
+
